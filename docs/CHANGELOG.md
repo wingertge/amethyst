@@ -14,6 +14,10 @@ The format is based on [Keep a Changelog][kc], and this project adheres to
 
 ### Changed
 
+- Allow config files and text assets to be encoded with UTF-8-BOM & UTF-16-BOM ([#2487])
+
+[#2487]: https://github.com/amethyst/amethyst/pull/2487
+
 ### Fixed
 
 ## [0.15.3] - 2020-08-22
