@@ -176,7 +176,8 @@ mod test {
     fn load_file() {
         let expected = TestConfig { amethyst: true };
 
-        let parsed = TestConfig::load(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/config.ron"));
+        let parsed =
+            TestConfig::load(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/config.ron"));
 
         assert_eq!(expected, parsed.unwrap());
     }
