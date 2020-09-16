@@ -160,3 +160,49 @@ where
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::Config;
+    use serde::{Deserialize, Serialize};
+    use std::path::Path;
+
+    #[derive(Debug, PartialEq, Deserialize, Serialize)]
+    struct TestConfig {
+        amethyst: bool,
+    }
+
+    #[test]
+    fn load_file() {
+        let expected = TestConfig { amethyst: true };
+
+        let parsed = TestConfig::load(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/config.ron"));
+
+        assert_eq!(expected, parsed.unwrap());
+    }
+
+    #[test]
+    fn load_file_with_bom_encodings() {
+        let expected = TestConfig { amethyst: true };
+
+        let utf8_bom =
+            TestConfig::load(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/UTF8-BOM.ron"));
+        let utf16_le_bom =
+            TestConfig::load(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/UTF16-LE-BOM.ron"));
+        let utf16_be_bom =
+            TestConfig::load(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/UTF16-BE-BOM.ron"));
+
+        assert_eq!(
+            expected,
+            utf8_bom.expect("Failed to parse UTF8 file with BOM")
+        );
+        assert_eq!(
+            expected,
+            utf16_le_bom.expect("Failed to parse UTF16-LE file with BOM")
+        );
+        assert_eq!(
+            expected,
+            utf16_be_bom.expect("Failed to parse UTF16-BE file with BOM")
+        );
+    }
+}
