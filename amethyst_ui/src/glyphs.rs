@@ -670,6 +670,40 @@ impl<'a, B: Backend> System<'a> for UiGlyphsSystem<B> {
                             );
                         }
                     }
+
+                    for (entity, ..) in (
+                        &entities,
+                        &multi_texts,
+                        !&hiddens,
+                        !&hidden_propagates,
+                    )
+                        .join()
+                    {
+                        let e_id = entity.id();
+                        let len = vertices[glyph_ctr..]
+                            .iter()
+                            .take_while(|(id, _)| *id == e_id)
+                            .count();
+                        let entity_verts = vertices[glyph_ctr..glyph_ctr + len].iter().map(|v| v.1);
+                        glyph_ctr += len;
+
+                        if let Some(glyph_data) = glyphs.get_mut(entity) {
+                            glyph_data.vertices.extend(entity_verts);
+                        } else {
+                            glyphs
+                                .insert(
+                                    entity,
+                                    UiGlyphs {
+                                        vertices: entity_verts.collect(),
+                                        sel_vertices: vec![],
+                                        cursor_pos: (0., 0.),
+                                        height: 0.,
+                                        space_width: 0.,
+                                    },
+                                )
+                                .unwrap();
+                        }
+                    }
                     break;
                 }
                 Ok(BrushAction::ReDraw) => {
