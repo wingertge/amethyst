@@ -53,6 +53,42 @@ pub struct UiText {
     pub(crate) cached_glyphs: Vec<CachedGlyph>,
 }
 
+#[derive(Derivative, Clone, Serialize)]
+#[derivative(Debug)]
+pub struct TextSection {
+    pub text: String,
+    pub color: [f32; 4],
+    #[serde(skip)]
+    pub font: FontHandle,
+    pub font_size: f32,
+}
+
+#[derive(Clone, Derivative, Serialize)]
+#[derivative(Debug)]
+pub struct UiMultipartText {
+    pub line_mode: LineMode,
+    pub align: Anchor,
+    /// Cached glyph positions including invisible characters, used to process mouse highlighting.
+    #[serde(skip)]
+    pub(crate) cached_glyphs: Vec<CachedGlyph>,
+    pub sections: Vec<TextSection>,
+}
+
+impl UiMultipartText {
+    pub fn new(text: Vec<TextSection>, line_mode: LineMode, align: Anchor) -> Self {
+        Self {
+            line_mode,
+            align,
+            cached_glyphs: Vec::new(),
+            sections: text,
+        }
+    }
+}
+
+impl Component for UiMultipartText {
+    type Storage = DenseVecStorage<Self>;
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct CachedGlyph {
     pub(crate) x: f32,

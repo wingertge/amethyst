@@ -49,7 +49,10 @@ pub use self::{
         UiPlaySoundAction, UiSoundRetrigger, UiSoundRetriggerSystem, UiSoundRetriggerSystemDesc,
         UiSoundSystem, UiSoundSystemDesc,
     },
-    text::{LineMode, TextEditing, TextEditingMouseSystem, TextEditingMouseSystemDesc, UiText},
+    text::{
+        LineMode, TextEditing, TextEditingMouseSystem, TextEditingMouseSystemDesc, UiMultipartText,
+        UiText,
+    },
     text_editing::{TextEditingInputSystem, TextEditingInputSystemDesc},
     transform::{get_parent_pixel_size, UiFinder, UiTransform},
     widgets::{Widget, WidgetId, Widgets},

@@ -1,5 +1,6 @@
 //! Module containing the system managing glyphbrush state for visible UI Text components.
 
+use crate::text::UiMultipartText;
 use crate::{
     pass::UiArgs, text::CachedGlyph, FontAsset, LineMode, Selected, TextEditing, UiText,
     UiTransform,
@@ -23,6 +24,7 @@ use amethyst_rendy::{
     resources::Tint,
     Backend, Texture,
 };
+use glyph_brush::rusttype::Font;
 use glyph_brush::{
     rusttype::Scale, BrushAction, BrushError, BuiltInLineBreaker, FontId, GlyphBrush,
     GlyphBrushBuilder, GlyphCruncher, Layout, LineBreak, LineBreaker, SectionText, VariedSection,
@@ -118,6 +120,7 @@ impl<'a, B: Backend> System<'a> for UiGlyphsSystem<B> {
         Entities<'a>,
         ReadStorage<'a, UiTransform>,
         WriteStorage<'a, UiText>,
+        WriteStorage<'a, UiMultipartText>,
         WriteStorage<'a, UiGlyphs>,
         ReadStorage<'a, TextEditing>,
         ReadStorage<'a, Hidden>,
@@ -137,6 +140,7 @@ impl<'a, B: Backend> System<'a> for UiGlyphsSystem<B> {
             entities,
             transforms,
             mut texts,
+            mut multi_texts,
             mut glyphs,
             text_editings,
             hiddens,
@@ -332,33 +336,139 @@ impl<'a, B: Backend> System<'a> for UiGlyphsSystem<B> {
                         }
                     });
 
-                let mut last_cached_glyph: Option<CachedGlyph> = None;
-                let all_glyphs = ui_text.text.chars().filter_map(|c| {
-                    if c.is_whitespace() {
-                        let (x, y) = if let Some(last_cached_glyph) = last_cached_glyph {
-                            let x = last_cached_glyph.x + last_cached_glyph.advance_width;
-                            let y = last_cached_glyph.y;
-                            (x, y)
-                        } else {
-                            (0.0, 0.0)
-                        };
-
-                        let advance_width =
-                            font_asset.glyph(c).scaled(scale).h_metrics().advance_width;
-
-                        let cached_glyph = CachedGlyph {
-                            x,
-                            y,
-                            advance_width,
-                        };
-                        last_cached_glyph = Some(cached_glyph);
-                        last_cached_glyph
-                    } else {
-                        last_cached_glyph = nonempty_cached_glyphs.next();
-                        last_cached_glyph
-                    }
-                });
+                let last_cached_glyph: Option<CachedGlyph> = None;
+                let all_glyphs = all_glyphs(
+                    font_asset,
+                    &mut nonempty_cached_glyphs,
+                    last_cached_glyph,
+                    &ui_text.text,
+                    scale,
+                );
                 ui_text.cached_glyphs.extend(all_glyphs);
+
+                glyph_brush_ref.queue_custom_layout(section, &layout);
+            }
+        }
+
+        for (entity, transform, ui_text, tint, _, _) in (
+            &entities,
+            &transforms,
+            &mut multi_texts,
+            tints.maybe(),
+            !&hiddens,
+            !&hidden_propagates,
+        )
+            .join()
+        {
+            ui_text.cached_glyphs.clear();
+
+            let text = ui_text
+                .sections
+                .iter()
+                .filter_map(|section| {
+                    let font_asset = font_storage.get(&section.font);
+                    let font_lookup = fonts_map_ref
+                        .entry(section.font.id())
+                        .or_insert(FontState::NotFound);
+                    if font_lookup.id().is_none() {
+                        if let Some(font) = font_storage.get(&section.font) {
+                            *font_lookup =
+                                FontState::Ready(glyph_brush_ref.add_font(font.0.clone()));
+                        }
+                    }
+                    if let (Some(font_id), Some(_)) = (font_lookup.id(), font_asset) {
+                        let tint_color = tint.map_or([1., 1., 1., 1.], |t| {
+                            let (r, g, b, a) = t.0.into_components();
+                            [r, g, b, a]
+                        });
+                        let base_color = mul_blend(&section.color, &tint_color);
+
+                        let scale = Scale::uniform(section.font_size);
+
+                        Some(SectionText {
+                            text: &section.text,
+                            scale,
+                            color: base_color,
+                            font_id,
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>();
+
+            if !text.is_empty() {
+                let layout = match ui_text.line_mode {
+                    LineMode::Single => Layout::SingleLine {
+                        line_breaker: CustomLineBreaker::None,
+                        h_align: ui_text.align.horizontal_align(),
+                        v_align: ui_text.align.vertical_align(),
+                    },
+                    LineMode::Wrap => Layout::Wrap {
+                        line_breaker: CustomLineBreaker::BuiltIn(
+                            BuiltInLineBreaker::UnicodeLineBreaker,
+                        ),
+                        h_align: ui_text.align.horizontal_align(),
+                        v_align: ui_text.align.vertical_align(),
+                    },
+                };
+
+                let section = VariedSection {
+                    // Needs a recenter because we are using [-0.5,0.5] for the mesh
+                    // instead of the expected [0,1]
+                    screen_position: (
+                        transform.pixel_x()
+                            + transform.pixel_width() * ui_text.align.norm_offset().0,
+                        // invert y because layout calculates it in reverse
+                        -(transform.pixel_y()
+                            + transform.pixel_height() * ui_text.align.norm_offset().1),
+                    ),
+                    bounds: (transform.pixel_width(), transform.pixel_height()),
+                    // There is no other way to inject some glyph metadata than using Z.
+                    // Fortunately depth is not required, so this slot is instead used to
+                    // distinguish computed glyphs indented to be used for various entities.
+                    z: f32::from_bits(entity.id()),
+                    layout: Default::default(), // overriden on queue
+                    text,
+                };
+
+                // `GlyphBrush::glyphs_custom_layout` does not return glyphs for invisible
+                // characters.
+                //
+                // <https://docs.rs/glyph_brush/0.6.2/glyph_brush/trait.GlyphCruncher.html
+                //  #tymethod.glyphs_custom_layout>
+                //
+                // For support, see:
+                //
+                // <https://github.com/alexheretic/glyph-brush/issues/80>
+                let mut nonempty_cached_glyphs = glyph_brush_ref
+                    .glyphs_custom_layout(&section, &layout)
+                    .map(|g| {
+                        let pos = g.position();
+                        let advance_width = g.unpositioned().h_metrics().advance_width;
+                        CachedGlyph {
+                            x: pos.x,
+                            y: -pos.y,
+                            advance_width,
+                        }
+                    });
+
+                let last_cached_glyph: Option<CachedGlyph> = None;
+
+                for section in &ui_text.sections {
+                    let font_asset = font_storage.get(&section.font).unwrap().0.clone();
+                    let scale = Scale::uniform(section.font_size);
+
+                    let all_glyphs = all_glyphs(
+                        font_asset,
+                        &mut nonempty_cached_glyphs,
+                        last_cached_glyph,
+                        &section.text,
+                        scale,
+                    );
+
+                    ui_text.cached_glyphs.extend(all_glyphs);
+                }
 
                 glyph_brush_ref.queue_custom_layout(section, &layout);
             }
@@ -688,4 +798,37 @@ fn password_sections(len: usize) -> impl Iterator<Item = &'static str> {
     std::iter::repeat(PASSWORD_STR)
         .take(full_chunks)
         .chain(Some(&PASSWORD_STR[0..last_len * 3]))
+}
+
+fn all_glyphs<'a>(
+    font_asset: Font<'a>,
+    nonempty_cached_glyphs: &'a mut (impl Iterator<Item = CachedGlyph> + 'a),
+    mut last_cached_glyph: Option<CachedGlyph>,
+    text: &'a str,
+    scale: Scale,
+) -> impl Iterator<Item = CachedGlyph> + 'a {
+    text.chars().filter_map(move |c| {
+        if c.is_whitespace() {
+            let (x, y) = if let Some(last_cached_glyph) = last_cached_glyph {
+                let x = last_cached_glyph.x + last_cached_glyph.advance_width;
+                let y = last_cached_glyph.y;
+                (x, y)
+            } else {
+                (0.0, 0.0)
+            };
+
+            let advance_width = font_asset.glyph(c).scaled(scale).h_metrics().advance_width;
+
+            let cached_glyph = CachedGlyph {
+                x,
+                y,
+                advance_width,
+            };
+            last_cached_glyph = Some(cached_glyph);
+            last_cached_glyph
+        } else {
+            last_cached_glyph = nonempty_cached_glyphs.next();
+            last_cached_glyph
+        }
+    })
 }
