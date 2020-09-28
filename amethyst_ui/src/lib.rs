@@ -51,7 +51,7 @@ pub use self::{
     },
     text::{
         LineMode, TextEditing, TextEditingMouseSystem, TextEditingMouseSystemDesc, UiMultipartText,
-        UiText,
+        UiText, TextSection
     },
     text_editing::{TextEditingInputSystem, TextEditingInputSystemDesc},
     transform::{get_parent_pixel_size, UiFinder, UiTransform},

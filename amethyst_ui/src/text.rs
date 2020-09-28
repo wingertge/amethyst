@@ -53,28 +53,45 @@ pub struct UiText {
     pub(crate) cached_glyphs: Vec<CachedGlyph>,
 }
 
+/// A section of text to be rendered in a specific style
 #[derive(Derivative, Clone, Serialize)]
 #[derivative(Debug)]
 pub struct TextSection {
+    /// The text to render
     pub text: String,
+    /// The font color for this section
     pub color: [f32; 4],
+    /// The font for this section
     #[serde(skip)]
     pub font: FontHandle,
+    /// The font size for this section
     pub font_size: f32,
 }
 
+/// A text with multiple, individually styled sections. Allows for inline color, font or
+/// font size changes.
 #[derive(Clone, Derivative, Serialize)]
 #[derivative(Debug)]
 pub struct UiMultipartText {
+    /// How the text should handle new lines.
     pub line_mode: LineMode,
+    /// How to align the text within its `UiTransform`.
     pub align: Anchor,
     /// Cached glyph positions including invisible characters, used to process mouse highlighting.
     #[serde(skip)]
     pub(crate) cached_glyphs: Vec<CachedGlyph>,
+    /// Cached glyph positions including invisible characters, used to process mouse highlighting.
     pub sections: Vec<TextSection>,
 }
 
 impl UiMultipartText {
+    /// Initializes a new UiMultipartText
+    ///
+    /// # Parameters
+    ///
+    /// * `sections`: A set of styled text sections
+    /// * `line_mode`: Text mode allowing single line or multiple lines
+    /// * `align`: Text alignment within its `UiTransform`
     pub fn new(text: Vec<TextSection>, line_mode: LineMode, align: Anchor) -> Self {
         Self {
             line_mode,
