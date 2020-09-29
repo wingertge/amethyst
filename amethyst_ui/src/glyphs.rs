@@ -671,13 +671,8 @@ impl<'a, B: Backend> System<'a> for UiGlyphsSystem<B> {
                         }
                     }
 
-                    for (entity, ..) in (
-                        &entities,
-                        &multi_texts,
-                        !&hiddens,
-                        !&hidden_propagates,
-                    )
-                        .join()
+                    for (entity, ..) in
+                        (&entities, &multi_texts, !&hiddens, !&hidden_propagates).join()
                     {
                         let e_id = entity.id();
                         let len = vertices[glyph_ctr..]

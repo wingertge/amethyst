@@ -44,6 +44,7 @@ use derivative::Derivative;
 use glsl_layout::{vec2, vec4, AsStd140};
 use std::cmp::Ordering;
 
+use crate::mask::Mask;
 #[cfg(feature = "profiler")]
 use thread_profiler::profile_scope;
 
@@ -116,6 +117,12 @@ struct UiViewArgs {
     inverse_window_size: vec2,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, AsStd140)]
+struct UiBoundsArgs {
+    min: vec2,
+    max: vec2,
+}
+
 lazy_static::lazy_static! {
     static ref UI_VERTEX: SpirvShader = SpirvShader::from_bytes(
         include_bytes!("../compiled/ui.vert.spv"),
@@ -160,13 +167,14 @@ impl<B: Backend> RenderGroupDesc<B, World> for DrawUiDesc {
         let env = DynamicUniform::new(factory, pso::ShaderStageFlags::VERTEX)?;
         let textures = TextureSub::new(factory)?;
         let vertex = DynamicVertexBuffer::new();
+        let bounds = DynamicUniform::new(factory, pso::ShaderStageFlags::FRAGMENT)?;
 
         let (pipeline, pipeline_layout) = build_ui_pipeline(
             factory,
             subpass,
             framebuffer_width,
             framebuffer_height,
-            vec![env.raw_layout(), textures.raw_layout()],
+            vec![env.raw_layout(), textures.raw_layout(), bounds.raw_layout()],
         )?;
 
         let (loader, tex_storage) =
@@ -183,6 +191,7 @@ impl<B: Backend> RenderGroupDesc<B, World> for DrawUiDesc {
             env,
             textures,
             vertex,
+            bounds,
             change: Default::default(),
             cached_draw_order: Default::default(),
             batches: Default::default(),
@@ -198,6 +207,7 @@ pub struct DrawUi<B: Backend> {
     pipeline_layout: B::PipelineLayout,
     env: DynamicUniform<B, UiViewArgs>,
     textures: TextureSub<B>,
+    bounds: DynamicUniform<B, UiBoundsArgs>,
     vertex: DynamicVertexBuffer<B, UiArgs>,
     batches: OrderedOneLevelBatch<TextureId, UiArgs>,
     change: ChangeDetection,
@@ -234,6 +244,7 @@ impl<B: Backend> RenderGroup<B, World> for DrawUi<B> {
             selected,
             tints,
             glyphs,
+            masks,
             glyphs_res,
             screen_dimesnions,
         ) = <(
@@ -246,6 +257,7 @@ impl<B: Backend> RenderGroup<B, World> for DrawUi<B> {
             ReadStorage<'_, Selected>,
             ReadStorage<'_, Tint>,
             ReadStorage<'_, UiGlyphs>,
+            ReadStorage<'_, Mask>,
             ReadExpect<'_, UiGlyphsResource>,
             ReadExpect<'_, ScreenDimensions>,
         ) as SystemData>::fetch(resources);
@@ -361,6 +373,29 @@ impl<B: Backend> RenderGroup<B, World> for DrawUi<B> {
                 changed = changed || this_changed;
             };
 
+            if let Some(transform) = masks.get(entity).and_then(|mask| transforms.get(mask.to)) {
+                let mut pixel_x = transform.pixel_x - transform.pixel_width / 2.0;
+                let mut pixel_y = transform.pixel_y - transform.pixel_height / 2.0;
+                let pivot_norm = transform.pivot.norm_offset();
+                pixel_x += transform.pixel_width * -pivot_norm.0;
+                pixel_y += transform.pixel_height * -pivot_norm.1;
+                let bounds = UiBoundsArgs {
+                    min: [pixel_x, pixel_y].into(),
+                    max: [
+                        pixel_x + transform.pixel_width,
+                        pixel_y + transform.pixel_height,
+                    ]
+                    .into(),
+                };
+                changed = self.bounds.write(factory, index, bounds.std140()) || changed;
+            } else {
+                let bounds = UiBoundsArgs {
+                    min: [0.0, 0.0].into(),
+                    max: [screen_dimesnions.width(), screen_dimesnions.height()].into(),
+                };
+                changed = self.bounds.write(factory, index, bounds.std140()) || changed;
+            }
+
             if let Some(glyph_data) = glyphs.get(entity) {
                 if !glyph_data.sel_vertices.is_empty() {
                     self.batches
@@ -460,6 +495,8 @@ impl<B: Backend> RenderGroup<B, World> for DrawUi<B> {
             let layout = &self.pipeline_layout;
             encoder.bind_graphics_pipeline(&self.pipeline);
             self.env.bind(index, &self.pipeline_layout, 0, &mut encoder);
+            self.bounds
+                .bind(index, &self.pipeline_layout, 2, &mut encoder);
             self.vertex.bind(index, 0, 0, &mut encoder);
             for (&tex, range) in self.batches.iter() {
                 self.textures.bind(layout, 1, tex, &mut encoder);

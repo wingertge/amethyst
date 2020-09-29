@@ -1,5 +1,6 @@
 //! ECS rendering bundle
 
+use crate::mask::Mask;
 use crate::{
     BlinkSystem, CacheSelectionOrderSystem, DragWidgetSystemDesc, FontAsset, NoCustomUi,
     ResizeSystemDesc, SelectionKeyboardSystemDesc, SelectionMouseSystemDesc,
@@ -8,6 +9,7 @@ use crate::{
     UiSoundRetriggerSystemDesc, UiSoundSystemDesc, UiTransformSystemDesc, WidgetId,
 };
 use amethyst_assets::Processor;
+use amethyst_core::ecs::WorldExt;
 use amethyst_core::{
     bundle::SystemBundle,
     ecs::prelude::{DispatcherBuilder, World},
@@ -123,6 +125,8 @@ where
 
         // Required for text editing. You want the cursor image to blink.
         builder.add(BlinkSystem, "blink_system", &[]);
+
+        world.register::<Mask>();
 
         Ok(())
     }

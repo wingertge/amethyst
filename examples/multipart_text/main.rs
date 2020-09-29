@@ -1,21 +1,30 @@
 //! Displays a shaded sphere to the user.
 
-use amethyst::{assets::{PrefabLoaderSystemDesc, Processor}, audio::{Source}, core::{frame_limiter::FrameRateLimitStrategy, transform::TransformBundle, Time}, derive::SystemDesc, ecs::prelude::{Entity, System, SystemData, WorldExt, Write}, input::{InputBundle, StringBindings}, prelude::*, renderer::{
-    plugins::RenderToWindow,
-    rendy::mesh::{Normal, Position, TexCoord},
-    types::DefaultBackend,
-    RenderingBundle,
-}, shrev::{EventChannel, ReaderId}, ui::{
-    Anchor, RenderUi, UiBundle, UiEvent, UiFinder, UiText,
-}, utils::{
-    application_root_dir,
-    fps_counter::{FpsCounter},
-    scene::BasicScenePrefab,
-}, LoggerConfig};
-use log::{info, LevelFilter};
-use amethyst_ui::{UiTransform, UiMultipartText, TextSection, get_default_font, FontAsset, LineMode};
-use amethyst_assets::AssetStorage;
 use amethyst::assets::Loader;
+use amethyst::{
+    assets::{PrefabLoaderSystemDesc, Processor},
+    audio::Source,
+    core::{frame_limiter::FrameRateLimitStrategy, transform::TransformBundle, Time},
+    derive::SystemDesc,
+    ecs::prelude::{Entity, System, SystemData, WorldExt, Write},
+    input::{InputBundle, StringBindings},
+    prelude::*,
+    renderer::{
+        plugins::RenderToWindow,
+        rendy::mesh::{Normal, Position, TexCoord},
+        types::DefaultBackend,
+        RenderingBundle,
+    },
+    shrev::{EventChannel, ReaderId},
+    ui::{Anchor, RenderUi, UiBundle, UiEvent, UiFinder, UiText},
+    utils::{application_root_dir, fps_counter::FpsCounter, scene::BasicScenePrefab},
+    LoggerConfig,
+};
+use amethyst_assets::AssetStorage;
+use amethyst_ui::{
+    get_default_font, FontAsset, LineMode, TextSection, UiMultipartText, UiTransform,
+};
+use log::{info, LevelFilter};
 
 type MyPrefabData = BasicScenePrefab<(Vec<Position>, Vec<Normal>, Vec<TexCoord>)>;
 
@@ -27,7 +36,7 @@ struct Example {
 
 impl SimpleState for Example {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
-        let StateData { mut world, .. } = data;
+        let StateData { world, .. } = data;
 
         let font = {
             let loader = world.fetch::<Loader>();
@@ -42,38 +51,39 @@ impl SimpleState for Example {
             0.0,
             0.0,
             500.0,
-            500.0
+            500.0,
         );
         let text = UiMultipartText::new(
-            vec![TextSection {
-                text: "This next part will be colored ".to_string(),
-                color: [0.0, 0.0, 0.0, 1.0],
-                font: font.clone(),
-                font_size: 21.0
-            }, TextSection {
-                text: "green".to_string(),
-                color: [0.0, 1.0, 0.0, 1.0],
-                font: font.clone(),
-                font_size: 21.0
-            }, TextSection {
-                text: " and this part will be ".to_string(),
-                color: [0.0, 0.0, 0.0, 1.0],
-                font: font.clone(),
-                font_size: 21.0
-            }, TextSection {
-                text: "twice as big!".to_string(),
-                color: [0.0, 0.0, 0.0, 1.0],
-                font,
-                font_size: 42.0
-            }],
+            vec![
+                TextSection {
+                    text: "This next part will be colored ".to_string(),
+                    color: [0.0, 0.0, 0.0, 1.0],
+                    font: font.clone(),
+                    font_size: 21.0,
+                },
+                TextSection {
+                    text: "green".to_string(),
+                    color: [0.0, 1.0, 0.0, 1.0],
+                    font: font.clone(),
+                    font_size: 21.0,
+                },
+                TextSection {
+                    text: " and this part will be ".to_string(),
+                    color: [0.0, 0.0, 0.0, 1.0],
+                    font: font.clone(),
+                    font_size: 21.0,
+                },
+                TextSection {
+                    text: "twice as big!".to_string(),
+                    color: [0.0, 0.0, 0.0, 1.0],
+                    font,
+                    font_size: 42.0,
+                },
+            ],
             LineMode::Wrap,
-            Anchor::Middle
+            Anchor::Middle,
         );
-        world
-            .create_entity()
-            .with(transform)
-            .with(text)
-            .build();
+        world.create_entity().with(transform).with(text).build();
     }
 
     fn update(&mut self, state_data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {

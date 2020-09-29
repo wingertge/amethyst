@@ -33,6 +33,7 @@ pub use self::{
     image::UiImage,
     label::{UiLabel, UiLabelBuilder, UiLabelBuilderResources},
     layout::{Anchor, ScaleMode, Stretch, UiTransformSystem, UiTransformSystemDesc},
+    mask::Mask,
     pass::{DrawUi, DrawUiDesc, RenderUi},
     prefab::{
         NoCustomUi, TextEditingPrefab, ToNativeWidget, UiButtonData, UiCreator, UiFormat,
@@ -50,8 +51,8 @@ pub use self::{
         UiSoundSystem, UiSoundSystemDesc,
     },
     text::{
-        LineMode, TextEditing, TextEditingMouseSystem, TextEditingMouseSystemDesc, UiMultipartText,
-        UiText, TextSection
+        LineMode, TextEditing, TextEditingMouseSystem, TextEditingMouseSystemDesc, TextSection,
+        UiMultipartText, UiText,
     },
     text_editing::{TextEditingInputSystem, TextEditingInputSystemDesc},
     transform::{get_parent_pixel_size, UiFinder, UiTransform},
@@ -72,6 +73,7 @@ mod glyphs;
 mod image;
 mod label;
 mod layout;
+mod mask;
 mod pass;
 mod prefab;
 mod resize;
