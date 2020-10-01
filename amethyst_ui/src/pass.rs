@@ -440,7 +440,7 @@ impl<B: Backend> RenderGroup<B, World> for DrawUi<B> {
                                 coords: [x, y].into(),
                                 dimensions: [w, h].into(),
                                 tex_coord_bounds: [0., 0., 1., 1.].into(),
-                                color: tint.unwrap_or([1., 1., 1., 1.]).into(),
+                                color: editing.cursor_color.into(),
                                 color_bias: [0., 0., 0., 0.].into(),
                             }),
                         )

@@ -163,6 +163,8 @@ pub struct TextEditing {
     pub selected_text_color: [f32; 4],
     /// The text background color when highlighted.
     pub selected_background_color: [f32; 4],
+    /// The color of the cursor
+    pub cursor_color: [f32; 4],
     /// If this is true the text will use a block cursor for editing.  Otherwise this uses a
     /// standard line cursor.  This is not recommended if your font is not monospace.
     pub use_block_cursor: bool,
@@ -181,6 +183,7 @@ impl TextEditing {
         max_length: usize,
         selected_text_color: [f32; 4],
         selected_background_color: [f32; 4],
+        cursor_color: [f32; 4],
         use_block_cursor: bool,
     ) -> TextEditing {
         TextEditing {
@@ -189,6 +192,7 @@ impl TextEditing {
             highlight_vector: 0,
             selected_text_color,
             selected_background_color,
+            cursor_color,
             use_block_cursor,
             cursor_blink_timer: 0.0,
         }

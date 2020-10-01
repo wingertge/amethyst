@@ -262,6 +262,8 @@ pub struct TextEditingPrefab {
     pub selected_text_color: [f32; 4],
     /// Background color on selection
     pub selected_background_color: [f32; 4],
+    /// Color of the blinking cursor
+    pub cursor_color: [f32; 4],
     /// Use block cursor instead of line cursor
     pub use_block_cursor: bool,
 }
@@ -272,6 +274,7 @@ impl Default for TextEditingPrefab {
             max_length: 20,
             selected_text_color: [0., 0., 0., 1.],
             selected_background_color: [1., 1., 1., 1.],
+            cursor_color: [1., 1., 1., 1.],
             use_block_cursor: false,
         }
     }
@@ -326,6 +329,7 @@ impl<'a> PrefabData<'a> for UiTextData {
                     editing.max_length,
                     editing.selected_text_color,
                     editing.selected_background_color,
+                    editing.cursor_color,
                     editing.use_block_cursor,
                 ),
             )?;
