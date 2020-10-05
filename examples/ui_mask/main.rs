@@ -10,6 +10,7 @@ use amethyst::{Application, GameData, GameDataBuilder, SimpleState, StateData};
 use amethyst_assets::AssetStorage;
 use amethyst_rendy::{ImageFormat, Texture};
 use amethyst_ui::{UiImage, UiTransform};
+use amethyst_core::Parent;
 
 pub fn main() -> amethyst::Result<()> {
     amethyst::start_logger(Default::default());
@@ -72,12 +73,13 @@ impl SimpleState for State {
                 "container".to_string(),
                 Anchor::Middle,
                 Anchor::Middle,
-                0.0,
-                0.0,
-                0.0,
+                200.0,
+                200.0,
+                1.0,
                 200.0,
                 200.0,
             ))
+            .with(UiImage::SolidColor([1.0, 0.0, 0.0, 1.0]))
             .build();
 
         let logo = {
@@ -93,14 +95,15 @@ impl SimpleState for State {
                 "logo".to_string(),
                 Anchor::Middle,
                 Anchor::Middle,
-                20.0,
-                20.0,
+                70.0,
+                70.0,
                 1.0,
                 300.0,
                 300.0,
             ))
             .with(logo)
             .with(Mask { to: container })
+            .with(Parent { entity: container })
             .build();
     }
 }

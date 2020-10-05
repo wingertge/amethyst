@@ -98,6 +98,8 @@ pub(crate) struct UiArgs {
     pub(crate) tex_coord_bounds: vec4,
     pub(crate) color: vec4,
     pub(crate) color_bias: vec4,
+    pub(crate) bounds_min: vec2,
+    pub(crate) bounds_max: vec2
 }
 
 impl AsVertex for UiArgs {
@@ -108,6 +110,8 @@ impl AsVertex for UiArgs {
             (Format::Rgba32Sfloat, "tex_coord_bounds"),
             (Format::Rgba32Sfloat, "color"),
             (Format::Rgba32Sfloat, "color_bias"),
+            (Format::Rg32Sfloat, "bounds_min"),
+            (Format::Rg32Sfloat, "bounds_max")
         ))
     }
 }
@@ -167,14 +171,13 @@ impl<B: Backend> RenderGroupDesc<B, World> for DrawUiDesc {
         let env = DynamicUniform::new(factory, pso::ShaderStageFlags::VERTEX)?;
         let textures = TextureSub::new(factory)?;
         let vertex = DynamicVertexBuffer::new();
-        let bounds = DynamicUniform::new(factory, pso::ShaderStageFlags::FRAGMENT)?;
 
         let (pipeline, pipeline_layout) = build_ui_pipeline(
             factory,
             subpass,
             framebuffer_width,
             framebuffer_height,
-            vec![env.raw_layout(), textures.raw_layout(), bounds.raw_layout()],
+            vec![env.raw_layout(), textures.raw_layout()],
         )?;
 
         let (loader, tex_storage) =
@@ -191,7 +194,6 @@ impl<B: Backend> RenderGroupDesc<B, World> for DrawUiDesc {
             env,
             textures,
             vertex,
-            bounds,
             change: Default::default(),
             cached_draw_order: Default::default(),
             batches: Default::default(),
@@ -207,7 +209,6 @@ pub struct DrawUi<B: Backend> {
     pipeline_layout: B::PipelineLayout,
     env: DynamicUniform<B, UiViewArgs>,
     textures: TextureSub<B>,
-    bounds: DynamicUniform<B, UiBoundsArgs>,
     vertex: DynamicVertexBuffer<B, UiArgs>,
     batches: OrderedOneLevelBatch<TextureId, UiArgs>,
     change: ChangeDetection,
@@ -358,6 +359,20 @@ impl<B: Backend> RenderGroup<B, World> for DrawUi<B> {
                 [r, g, b, a]
             });
 
+            let (bounds_min, bounds_max) = if let Some(transform) = masks.get(entity).and_then(|mask| transforms.get(mask.to)) {
+                let pixel_x = transform.pixel_x - transform.pixel_width / 2.0;
+                let mut pixel_y = transform.pixel_y + transform.pixel_height / 2.0;
+                pixel_y = screen_dimesnions.height() - pixel_y;
+                let bounds_min = [pixel_x, pixel_y];
+                let bounds_max = [
+                    pixel_x + transform.pixel_width,
+                    pixel_y + transform.pixel_height,
+                ];
+                (bounds_min.into(), bounds_max.into())
+            } else {
+                ([0.0, 0.0].into(), [screen_dimesnions.width(), screen_dimesnions.height()].into())
+            };
+
             let image = images.get(entity);
             if let Some(image) = image {
                 let this_changed = render_image(
@@ -367,39 +382,28 @@ impl<B: Backend> RenderGroup<B, World> for DrawUi<B> {
                     image,
                     &tint,
                     white_tex_id,
+                    (bounds_min, bounds_max),
                     &mut self.textures,
                     &mut self.batches,
                 );
                 changed = changed || this_changed;
             };
 
-            if let Some(transform) = masks.get(entity).and_then(|mask| transforms.get(mask.to)) {
-                let mut pixel_x = transform.pixel_x - transform.pixel_width / 2.0;
-                let mut pixel_y = transform.pixel_y - transform.pixel_height / 2.0;
-                let pivot_norm = transform.pivot.norm_offset();
-                pixel_x += transform.pixel_width * -pivot_norm.0;
-                pixel_y += transform.pixel_height * -pivot_norm.1;
-                let bounds = UiBoundsArgs {
-                    min: [pixel_x, pixel_y].into(),
-                    max: [
-                        pixel_x + transform.pixel_width,
-                        pixel_y + transform.pixel_height,
-                    ]
-                    .into(),
-                };
-                changed = self.bounds.write(factory, index, bounds.std140()) || changed;
-            } else {
-                let bounds = UiBoundsArgs {
-                    min: [0.0, 0.0].into(),
-                    max: [screen_dimesnions.width(), screen_dimesnions.height()].into(),
-                };
-                changed = self.bounds.write(factory, index, bounds.std140()) || changed;
-            }
-
             if let Some(glyph_data) = glyphs.get(entity) {
                 if !glyph_data.sel_vertices.is_empty() {
                     self.batches
-                        .insert(white_tex_id, glyph_data.sel_vertices.iter().cloned());
+                        .insert(white_tex_id, glyph_data.sel_vertices.iter()
+                            .map(|ui_args| {
+                                UiArgs {
+                                    coords: ui_args.coords,
+                                    dimensions: ui_args.dimensions,
+                                    tex_coord_bounds: ui_args.tex_coord_bounds,
+                                    color: ui_args.color,
+                                    color_bias: ui_args.color_bias,
+                                    bounds_min,
+                                    bounds_max,
+                                }
+                            }));
                 }
 
                 // blinking cursor
@@ -442,6 +446,8 @@ impl<B: Backend> RenderGroup<B, World> for DrawUi<B> {
                                 tex_coord_bounds: [0., 0., 1., 1.].into(),
                                 color: editing.cursor_color.into(),
                                 color_bias: [0., 0., 0., 0.].into(),
+                                bounds_min,
+                                bounds_max
                             }),
                         )
                     }
@@ -449,7 +455,17 @@ impl<B: Backend> RenderGroup<B, World> for DrawUi<B> {
 
                 if !glyph_data.vertices.is_empty() {
                     self.batches
-                        .insert(glyph_tex_id, glyph_data.vertices.iter().cloned());
+                        .insert(glyph_tex_id, glyph_data.vertices.iter().map(|ui_args| {
+                            UiArgs {
+                                coords: ui_args.coords,
+                                dimensions: ui_args.dimensions,
+                                tex_coord_bounds: ui_args.tex_coord_bounds,
+                                color: ui_args.color,
+                                color_bias: ui_args.color_bias,
+                                bounds_min,
+                                bounds_max,
+                            }
+                        }));
                 }
             }
         }
@@ -495,8 +511,6 @@ impl<B: Backend> RenderGroup<B, World> for DrawUi<B> {
             let layout = &self.pipeline_layout;
             encoder.bind_graphics_pipeline(&self.pipeline);
             self.env.bind(index, &self.pipeline_layout, 0, &mut encoder);
-            self.bounds
-                .bind(index, &self.pipeline_layout, 2, &mut encoder);
             self.vertex.bind(index, 0, 0, &mut encoder);
             for (&tex, range) in self.batches.iter() {
                 self.textures.bind(layout, 1, tex, &mut encoder);
@@ -576,6 +590,7 @@ fn render_image<B: Backend>(
     raw_image: &UiImage,
     tint: &Option<[f32; 4]>,
     white_tex_id: TextureId,
+    (bounds_min, bounds_max): (vec2, vec2),
     textures: &mut TextureSub<B>,
     batches: &mut OrderedOneLevelBatch<TextureId, UiArgs>,
 ) -> bool {
@@ -617,6 +632,8 @@ fn render_image<B: Backend>(
         tex_coord_bounds: tex_coords.into(),
         color: color.into(),
         color_bias: [0., 0., 0., 0.].into(),
+        bounds_min,
+        bounds_max
     };
 
     match raw_image {

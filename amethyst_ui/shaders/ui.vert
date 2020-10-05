@@ -9,10 +9,14 @@ layout(location = 1) in vec2 dimensions;
 layout(location = 2) in vec4 tex_coord_bounds;
 layout(location = 3) in vec4 color;
 layout(location = 4) in vec4 color_bias;
+layout(location = 5) in vec2 bounds_min;
+layout(location = 6) in vec2 bounds_max;
 
 layout(location = 0) out vec2 out_tex_coords;
 layout(location = 1) out vec4 out_color;
 layout(location = 2) out vec4 out_color_bias;
+layout(location = 3) out vec2 out_bounds_min;
+layout(location = 4) out vec2 out_bounds_max;
 
 const vec2 positions[4] = vec2[](
     vec2(0.5, -0.5), // Right bottom
@@ -28,6 +32,8 @@ void main() {
     out_tex_coords = mix(tex_coord_bounds.xy, tex_coord_bounds.zw, coords_base);
     out_color = color;
     out_color_bias = color_bias;
+    out_bounds_min = bounds_min;
+    out_bounds_max = bounds_max;
 
     vec2 center = coords * inverse_window_size;
     center.y = 1.0 - center.y; 
