@@ -280,23 +280,15 @@ where
             world.exec(|ev: Read<'_, EventChannel<Event>>| {
                 ev.read(reader_id).any(|e| {
                     if cfg!(target_os = "ios") {
-                        if let Event::WindowEvent {
+                        matches!(e, Event::WindowEvent {
                             event: WindowEvent::Destroyed,
                             ..
-                        } = e
-                        {
-                            true
-                        } else {
-                            false
-                        }
-                    } else if let Event::WindowEvent {
-                        event: WindowEvent::CloseRequested,
-                        ..
-                    } = e
-                    {
-                        true
+                        })
                     } else {
-                        false
+                        matches!(e, Event::WindowEvent {
+                             event: WindowEvent::CloseRequested,
+                          ..
+                        })
                     }
                 })
             })

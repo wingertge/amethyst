@@ -8,9 +8,9 @@ use amethyst::ui::{Anchor, Mask, RenderUi, UiBundle};
 use amethyst::utils::application_root_dir;
 use amethyst::{Application, GameData, GameDataBuilder, SimpleState, StateData};
 use amethyst_assets::AssetStorage;
+use amethyst_core::Parent;
 use amethyst_rendy::{ImageFormat, Texture};
 use amethyst_ui::{UiImage, UiTransform};
-use amethyst_core::Parent;
 
 pub fn main() -> amethyst::Result<()> {
     amethyst::start_logger(Default::default());

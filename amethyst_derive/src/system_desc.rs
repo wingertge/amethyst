@@ -43,11 +43,7 @@ pub fn impl_system_desc(ast: &DeriveInput) -> TokenStream {
             .field_mappings
             .iter()
             .find(|&field_mapping| {
-                if let FieldVariant::Passthrough { .. } = field_mapping.field_variant {
-                    true
-                } else {
-                    false
-                }
+                matches!(field_mapping.field_variant, FieldVariant::Passthrough { .. })
             })
             .is_none();
 
@@ -390,11 +386,7 @@ fn call_system_constructor(context: &Context<'_>) -> TokenStream {
                 quote!(#system_name)
             } else {
                 let has_fields_to_compute = field_mappings.iter().any(|field_mapping| {
-                    if let FieldVariant::Compute(..) = &field_mapping.field_variant {
-                        true
-                    } else {
-                        false
-                    }
+                    matches!(&field_mapping.field_variant, FieldVariant::Compute(..))
                 });
                 if has_fields_to_compute {
                     let field_initializers = field_mappings
@@ -434,11 +426,7 @@ fn call_system_constructor(context: &Context<'_>) -> TokenStream {
         }
         Fields::Unnamed(..) => {
             let has_fields_to_compute = field_mappings.iter().any(|field_mapping| {
-                if let FieldVariant::Compute(..) = &field_mapping.field_variant {
-                    true
-                } else {
-                    false
-                }
+                matches!(&field_mapping.field_variant, FieldVariant::Compute(..))
             });
             if has_fields_to_compute {
                 let field_initializers = field_mappings
@@ -471,20 +459,18 @@ fn call_system_constructor(context: &Context<'_>) -> TokenStream {
             }
         }
         Fields::Named(..) => {
-            let has_fields_to_compute_or_passthrough =
-                field_mappings
-                    .iter()
-                    .any(|field_mapping| match &field_mapping.field_variant {
-                        FieldVariant::Compute(..) | FieldVariant::Passthrough { .. } => true,
-                        _ => false,
-                    });
-            let has_fields_skipped_or_phantom =
-                field_mappings
-                    .iter()
-                    .any(|field_mapping| match &field_mapping.field_variant {
-                        FieldVariant::Skipped(..) | FieldVariant::PhantomData { .. } => true,
-                        _ => false,
-                    });
+            let has_fields_to_compute_or_passthrough = field_mappings.iter().any(|field_mapping| {
+                matches!(
+                    &field_mapping.field_variant,
+                    FieldVariant::Compute(..) | FieldVariant::Passthrough { .. }
+                )
+            });
+            let has_fields_skipped_or_phantom = field_mappings.iter().any(|field_mapping| {
+                matches!(
+                    &field_mapping.field_variant,
+                    FieldVariant::Skipped(..) | FieldVariant::PhantomData { .. }
+                )
+            });
             if has_fields_to_compute_or_passthrough {
                 if has_fields_skipped_or_phantom {
                     let field_initializers = field_mappings

@@ -293,14 +293,15 @@ fn to_world(
     map_transform: Option<&Transform>,
 ) -> Vector3<f32> {
     let coord_f = Point3::new(coord.x as f32, -1.0 * coord.y as f32, coord.z as f32);
-    if let Some(map_trans) = map_transform {
-        map_trans
-            .global_matrix()
-            .transform_point(&transform.transform_point(&coord_f))
-            .coords
-    } else {
-        transform.transform_point(&coord_f).coords
-    }
+    map_transform.map_or_else(
+        || transform.transform_point(&coord_f).coords,
+        |map_trans| {
+            map_trans
+                .global_matrix()
+                .transform_point(&transform.transform_point(&coord_f))
+                .coords
+        },
+    )
 }
 
 #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
@@ -310,13 +311,14 @@ fn to_tile(
     max_dimensions: &Vector3<u32>,
     map_transform: Option<&Transform>,
 ) -> Result<Point3<u32>, TileOutOfBoundsError> {
-    let point = if let Some(map_trans) = map_transform {
-        map_trans
-            .global_view_matrix()
-            .transform_point(&Point3::from(*coord))
-    } else {
-        Point3::from(*coord)
-    };
+    let point = map_transform.map_or_else(
+        || Point3::from(*coord),
+        |map_trans| {
+            map_trans
+                .global_view_matrix()
+                .transform_point(&Point3::from(*coord))
+        },
+    );
 
     let mut inverse = transform
         .try_inverse()

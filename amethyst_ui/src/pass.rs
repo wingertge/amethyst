@@ -99,7 +99,7 @@ pub(crate) struct UiArgs {
     pub(crate) color: vec4,
     pub(crate) color_bias: vec4,
     pub(crate) bounds_min: vec2,
-    pub(crate) bounds_max: vec2
+    pub(crate) bounds_max: vec2,
 }
 
 impl AsVertex for UiArgs {
@@ -111,7 +111,7 @@ impl AsVertex for UiArgs {
             (Format::Rgba32Sfloat, "color"),
             (Format::Rgba32Sfloat, "color_bias"),
             (Format::Rg32Sfloat, "bounds_min"),
-            (Format::Rg32Sfloat, "bounds_max")
+            (Format::Rg32Sfloat, "bounds_max"),
         ))
     }
 }
@@ -359,7 +359,9 @@ impl<B: Backend> RenderGroup<B, World> for DrawUi<B> {
                 [r, g, b, a]
             });
 
-            let (bounds_min, bounds_max) = if let Some(transform) = masks.get(entity).and_then(|mask| transforms.get(mask.to)) {
+            let (bounds_min, bounds_max) = if let Some(transform) =
+                masks.get(entity).and_then(|mask| transforms.get(mask.to))
+            {
                 let pixel_x = transform.pixel_x - transform.pixel_width / 2.0;
                 let mut pixel_y = transform.pixel_y + transform.pixel_height / 2.0;
                 pixel_y = screen_dimesnions.height() - pixel_y;
@@ -370,7 +372,10 @@ impl<B: Backend> RenderGroup<B, World> for DrawUi<B> {
                 ];
                 (bounds_min.into(), bounds_max.into())
             } else {
-                ([0.0, 0.0].into(), [screen_dimesnions.width(), screen_dimesnions.height()].into())
+                (
+                    [0.0, 0.0].into(),
+                    [screen_dimesnions.width(), screen_dimesnions.height()].into(),
+                )
             };
 
             let image = images.get(entity);
@@ -391,19 +396,18 @@ impl<B: Backend> RenderGroup<B, World> for DrawUi<B> {
 
             if let Some(glyph_data) = glyphs.get(entity) {
                 if !glyph_data.sel_vertices.is_empty() {
-                    self.batches
-                        .insert(white_tex_id, glyph_data.sel_vertices.iter()
-                            .map(|ui_args| {
-                                UiArgs {
-                                    coords: ui_args.coords,
-                                    dimensions: ui_args.dimensions,
-                                    tex_coord_bounds: ui_args.tex_coord_bounds,
-                                    color: ui_args.color,
-                                    color_bias: ui_args.color_bias,
-                                    bounds_min,
-                                    bounds_max,
-                                }
-                            }));
+                    self.batches.insert(
+                        white_tex_id,
+                        glyph_data.sel_vertices.iter().map(|ui_args| UiArgs {
+                            coords: ui_args.coords,
+                            dimensions: ui_args.dimensions,
+                            tex_coord_bounds: ui_args.tex_coord_bounds,
+                            color: ui_args.color,
+                            color_bias: ui_args.color_bias,
+                            bounds_min,
+                            bounds_max,
+                        }),
+                    );
                 }
 
                 // blinking cursor
@@ -447,25 +451,25 @@ impl<B: Backend> RenderGroup<B, World> for DrawUi<B> {
                                 color: editing.cursor_color.into(),
                                 color_bias: [0., 0., 0., 0.].into(),
                                 bounds_min,
-                                bounds_max
+                                bounds_max,
                             }),
                         )
                     }
                 }
 
                 if !glyph_data.vertices.is_empty() {
-                    self.batches
-                        .insert(glyph_tex_id, glyph_data.vertices.iter().map(|ui_args| {
-                            UiArgs {
-                                coords: ui_args.coords,
-                                dimensions: ui_args.dimensions,
-                                tex_coord_bounds: ui_args.tex_coord_bounds,
-                                color: ui_args.color,
-                                color_bias: ui_args.color_bias,
-                                bounds_min,
-                                bounds_max,
-                            }
-                        }));
+                    self.batches.insert(
+                        glyph_tex_id,
+                        glyph_data.vertices.iter().map(|ui_args| UiArgs {
+                            coords: ui_args.coords,
+                            dimensions: ui_args.dimensions,
+                            tex_coord_bounds: ui_args.tex_coord_bounds,
+                            color: ui_args.color,
+                            color_bias: ui_args.color_bias,
+                            bounds_min,
+                            bounds_max,
+                        }),
+                    );
                 }
             }
         }
@@ -633,7 +637,7 @@ fn render_image<B: Backend>(
         color: color.into(),
         color_bias: [0., 0., 0., 0.].into(),
         bounds_min,
-        bounds_max
+        bounds_max,
     };
 
     match raw_image {

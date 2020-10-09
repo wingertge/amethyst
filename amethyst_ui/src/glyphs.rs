@@ -571,7 +571,7 @@ impl<'a, B: Backend> System<'a> for UiGlyphsSystem<B> {
                             color: glyph.color.into(),
                             color_bias: [1., 1., 1., 0.].into(),
                             bounds_min: [0.0, 0.0].into(),
-                            bounds_max: [0.0, 0.0].into()
+                            bounds_max: [0.0, 0.0].into(),
                         },
                     )
                 },
@@ -658,7 +658,7 @@ impl<'a, B: Backend> System<'a> for UiGlyphsSystem<B> {
                                 color: bg_color.into(),
                                 color_bias: [1., 1., 1., 0.].into(),
                                 bounds_min: Default::default(),
-                                bounds_max: Default::default()
+                                bounds_max: Default::default(),
                             });
                             let mut glyph_data = glyphs.get_mut(entity).unwrap();
                             glyph_data.sel_vertices.extend(iter);

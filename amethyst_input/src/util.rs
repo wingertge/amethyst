@@ -43,13 +43,7 @@ pub fn is_key_up(event: &Event, key_code: VirtualKeyCode) -> bool {
 
 /// Returns true if the event passed in is a request to close the game window.
 pub fn is_close_requested(event: &Event) -> bool {
-    match *event {
-        Event::WindowEvent { ref event, .. } => match *event {
-            WindowEvent::CloseRequested => true,
-            _ => false,
-        },
-        _ => false,
-    }
+    matches!(*event, Event::WindowEvent { event: WindowEvent::CloseRequested, .. })
 }
 
 /// Gets the input axis value from the `InputHandler`.

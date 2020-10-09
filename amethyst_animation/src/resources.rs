@@ -299,18 +299,12 @@ pub enum ControlState {
 impl ControlState {
     /// Is the state `Running`
     pub fn is_running(&self) -> bool {
-        match *self {
-            ControlState::Running(_) => true,
-            _ => false,
-        }
+        matches!(*self, ControlState::Running(_))
     }
 
     /// Is the state `Paused`
     pub fn is_paused(&self) -> bool {
-        match *self {
-            ControlState::Paused(_) => true,
-            _ => false,
-        }
+        matches!(*self, ControlState::Paused(_))
     }
 }
 
